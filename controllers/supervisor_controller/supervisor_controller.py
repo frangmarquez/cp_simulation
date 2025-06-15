@@ -10,9 +10,11 @@ timestep = int(supervisor.getBasicTimeStep())
 
 # Constants
 RADIUS = 2.5
-NUM_RESOURCES = 15
+NUM_RESOURCES = 10
 RESOURCE_MIN = 1
 RESOURCE_MAX = 10
+
+CENTER_TOLERANCE = 0.1
 
 resource_data = []
 
@@ -55,6 +57,10 @@ def print_scoreboard_if_changed(current_scores):
         last_printed_scores = current_scores.copy()
     
 robot_teams = {}
+robot_names = []
+has_collected_states = {}
+for robot in robot_names:
+    has_collected_states[robot] = 'not_collected'
 
 root = supervisor.getRoot()
 children = root.getField("children")
@@ -62,14 +68,13 @@ count = children.getCount()
 
 for i in range(count):
     node = children.getMFNode(i)
-    if node.getTypeName() == "Robot":
+    if node.getTypeName() == "Rosbot":
         name = node.getField("name").getSFString()
-        if name.startswith("rosbot"):
-            custom_data = node.getField("customData").getSFString()
-            team = custom_data.strip().lower()
-            robot_teams[name] = team
-        
-        
+        robot_names.append(name)
+        team_data = node.getField("controllerArgs").getMFString(0)
+        team = team_data.strip().lower()
+        robot_teams[name] = team
+
 def generate_resource_spot(supervisor, value, index):
     angle = random.uniform(0, 2 * math.pi)
     distance = random.uniform(1.0, RADIUS - 0.2)
@@ -152,11 +157,50 @@ def update_resource_shapes():
     except Exception as e:
         print("Error updating resources:", e)
 
+def has_recollected(rosbot_name):
+    robot_node = supervisor.getFromDef(rosbot_name)
+    if robot_node is None:
+        raise ValueError(f"Robot {rosbot_name} not found in the simulation.")
+    customdata_field_string = robot_node.getField("customData").getSFString()
+    return customdata_field_string == "collected"
+
+def log_collected_resources():
+
+    for robot_name in robot_names:
+        position = supervisor.getFromDef(robot_name).getField("translation").getSFVec3f()
+        distance = math.sqrt(position[0]**2 + position[1]**2)
+        #print(f"{robot_name} position: {position}, distance from center: {distance:.2f}")
+
+        if distance <= CENTER_TOLERANCE + 0.2:
+            if not has_recollected(robot_name):
+                continue
+            else:
+                robot_node = supervisor.getFromDef(robot_name)
+                if robot_node:
+                    customdata_field = robot_node.getField("customData")
+                    customdata_field.setSFString("not_collected")
+                    print(f"{robot_name}'s status is now 'not_collected'.")
+
+                with open(LOG_FILE, "a") as f:
+                    team = robot_teams.get(robot_name, "unknown")
+                    teams_resources_counter[team] += 1
+                    log_entry = {
+                        "robot": robot_name,
+                        "team": team,
+                        "resources_collected": teams_resources_counter[team]
+                    }
+                    f.write(json.dumps(log_entry) + "\n")
+
+teams_resources_counter = Counter()
+# Remove existing log file if it exists
+if os.path.exists(LOG_FILE):
+    os.remove(LOG_FILE)
         
 # Main loop just steps the simulation
 while supervisor.step(timestep) != -1:
-    #current_scores = read_team_scores()
-    #print_scoreboard_if_changed(current_scores)
-    update_resource_shapes()
-    
 
+    update_resource_shapes()
+
+    log_collected_resources()
+    
+        
