@@ -17,45 +17,6 @@ RESOURCE_MAX = 10
 CENTER_TOLERANCE = 0.1
 
 resource_data = []
-
-def get_team_from_color(rgb, tolerance=0.1):
-    r, g, b = rgb
-    if r >= g + tolerance and r >= b + tolerance:
-        return "red"
-    elif g >= r + tolerance and g >= b + tolerance:
-        return "green"
-    elif b >= r + tolerance and b >= g + tolerance:
-        return "blue"
-    else:
-        return "unknown"
-
-def read_team_scores():
-    scores = Counter()
-    if not os.path.exists(LOG_FILE):
-        return scores
-
-    with open(LOG_FILE, "r") as f:
-        for line in f:
-            try:
-                entry = json.loads(line.strip())
-                team = entry.get("team", "").lower()
-                if team:
-                    scores[team] += 1
-            except json.JSONDecodeError:
-                continue  # skip malformed lines
-    return scores
-
-def print_scoreboard_if_changed(current_scores):
-    global last_printed_scores
-    if current_scores != last_printed_scores:
-        print("\n" + "="*32)
-        print(f"{'TEAM':<15} | {'RESOURCES':>10}")
-        print("-"*32)
-        for team, score in sorted(current_scores.items()):
-            print(f"{team.capitalize():<15} | {score:>10}")
-        print("="*32 + "\n")
-        last_printed_scores = current_scores.copy()
-    
 robot_teams = {}
 robot_names = []
 has_collected_states = {}
@@ -124,38 +85,51 @@ with open("./../../data/resource_positions.json", "w") as f:
     json.dump(resource_data, f)
 
 RESOURCE_JSON = "./../../data/resource_positions.json"
-LOG_FILE = "./../../data/recollection_log.json"
-last_printed_scores = Counter()
-
+LOG_FILE = "./../../data/recollection_log.txt"
 
 def update_resource_shapes():
-    try:
-        with open(RESOURCE_JSON, "r") as f:
-            updated_resources = json.load(f)
+    for i, resource in enumerate(resource_data):
+        value = resource["value"]
+        node = supervisor.getFromDef(f"RESOURCE_{i}")
 
-        for i, resource in enumerate(updated_resources):
-            value = resource["value"]
-            node = supervisor.getFromDef(f"RESOURCE_{i}")
+        if not node:
+            continue  # Skip if the node doesn't exist
 
-            if not node:
-                continue  # Skip if the node doesn't exist
+        if value <= 0:
+            # Remove the node from the world
+            node.remove()
+            print(f"Resource {i} depleted and removed.")
+        else:
+            # Update the radius
+            radius = 0.1 + (value - 1) * 0.02
+            children_field = node.getField("children")
+            shape_node = children_field.getMFNode(0)
+            geometry_field = shape_node.getField("geometry")
+            cylinder_node = geometry_field.getSFNode()
+            radius_field = cylinder_node.getField("radius")
+            radius_field.setSFFloat(radius)
 
-            if value <= 0:
-                # Remove the node from the world
-                node.remove()
-                print(f"Resource {i} depleted and removed.")
-            else:
-                # Update the radius
-                radius = 0.1 + (value - 1) * 0.02
-                children_field = node.getField("children")
-                shape_node = children_field.getMFNode(0)
-                geometry_field = shape_node.getField("geometry")
-                cylinder_node = geometry_field.getSFNode()
-                radius_field = cylinder_node.getField("radius")
-                radius_field.setSFFloat(radius)
+def check_and_process_collection(robot_name):
+    robot_node = supervisor.getFromDef(robot_name)
+    position = robot_node.getField("translation").getSFVec3f()
+    x, y = position[0], position[1]
+    for i, resource in enumerate(resource_data):
+        value = resource["value"]
+        if value <= 0:
+            continue
+        rx, ry = resource["x"], resource["y"]
 
-    except Exception as e:
-        print("Error updating resources:", e)
+        detection_radius = 0.1 + 0.05 * value
+        dist = math.sqrt((x - rx)**2 + (y - ry)**2)
+        if dist <= detection_radius:
+            resource["value"] = max(0, value - 1)
+            robot_node.getField("customData").setSFString("collected")
+            print(f"[Supervisor] {robot_name} collected from resource_{i}, remaining value: {resource['value']}")
+            return True
+
+def track_resources_collection():
+    for robot_name in robot_names:
+        check_and_process_collection(robot_name)
 
 def has_recollected(rosbot_name):
     robot_node = supervisor.getFromDef(rosbot_name)
@@ -198,6 +172,8 @@ if os.path.exists(LOG_FILE):
         
 # Main loop just steps the simulation
 while supervisor.step(timestep) != -1:
+
+    track_resources_collection()
 
     update_resource_shapes()
 

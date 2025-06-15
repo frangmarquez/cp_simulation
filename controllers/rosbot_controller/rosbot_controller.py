@@ -45,15 +45,6 @@ current_right_speed = 0.0
 has_collected = False   # Flag: one collection per trip
 t0 = True
 collected_count = 0
-
-def update_controller_args():
-    # This writes the current value to the controllerArgs field (accessible by supervisor)
-    robot.setCustomData("collected" if has_collected else "not_collected")
-
-def collect_resource():
-    global has_collected
-    has_collected = True
-    update_controller_args()
         
 def get_heading_angle():
     north = compass.getValues()
@@ -108,20 +99,6 @@ while robot.step(timestep) != -1:
     dist = math.sqrt((x-center_x)**2 + (y-center_y)**2)
     time = robot.getTime()
     
-    if t0:
-        resource_positions = []
-        try:
-            with open("./../../data/resource_positions.json", "r") as f:
-                content = f.read().strip()
-                if content:
-                    resources = json.loads(content)
-                else:
-                    print("resource_positions.json is empty.")
-                    resources = []
-                
-        except Exception as e:
-            print(f"Failed to load resource_positions.json: {e}")
-            resources = []
     get_heading_vector()
     
     if state == "choose_direction":
@@ -146,46 +123,23 @@ while robot.step(timestep) != -1:
             
     elif state == "moving_out":
         set_velocity(MAX_SPEED, MAX_SPEED)
-
-        # Check proximity to any resource
-        
         if dist >= ARENA_RADIUS - WALL_TOLERANCE:
             print("Wall reached. Backing up.")
             back_start_time = time
             set_velocity(-MAX_SPEED, -MAX_SPEED)
             state = "backing_up"
 
-        if not has_collected:
-            for i, resource in enumerate(resources):
-        
-                rx, ry = resource["x"], resource["y"]
-                value = resource["value"]
-                
-                if value <= 0:
-                    continue
-                    
-                detection_radius = compute_detection_radius(value)
-                
-                dist_to_resource = math.sqrt((x - rx)**2 + (y - ry)**2)
-        
-                if dist_to_resource <= detection_radius:
-                    print(f"Resource {i} detected! Collecting...")
-                    set_velocity(0, 0)
-                    collect_resource()
-                    start = robot.getTime()
-                    while robot.step(timestep) != -1:
-                        if robot.getTime() - start > 2.0:
-                            break  # Simulated recollection
-        
-                    # Update resource value
-                    resource["value"] = max(0, value - 1)
-                    #with open("./../../data/resource_positions.json", "w") as f:
-                    #    json.dump(resources, f)
-                    print(f"Collected 1 unit from resource {i}, remaining value: {resource['value']}")
-                    state = "turning_to_center"
-                    break
+        has_collected = robot.getCustomData().strip().lower() == "collected"
+        if has_collected:
+            print(f"Resource detected! Collecting...")
+            set_velocity(0, 0)
+            start = robot.getTime()
+            while robot.step(timestep) != -1:
+                if robot.getTime() - start > 2.0:
+                    break  # Simulated recollection
 
-
+            print(f"Collected 1 unit from a resource, returning to nest")
+            state = "turning_to_center"
 
     elif state == "backing_up":
         set_velocity(-MAX_SPEED*0.5, -MAX_SPEED*0.5)
