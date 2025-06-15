@@ -18,7 +18,7 @@ PROTO Rosbot [
   field  SFRotation  rotation        0 0 1 0
   field  SFString    name            "rosbot"  # Is `Robot.name`.
   field  SFString    controller      "<generic>" # Is `Robot.controller`.
-  field  MFString    controllerArgs  []        # Is `Robot.controllerArgs`.
+  field  MFString    controllerArgs  [""]        # Is `Robot.controllerArgs`.
   field  SFString    customData      ""        # Is `Robot.customData`.
   field  SFBool      supervisor      FALSE     # Is `Robot.supervisor`.
   field  SFBool      synchronization TRUE      # Is `Robot.synchronization`.
@@ -27,7 +27,7 @@ PROTO Rosbot [
   field  MFNode      lidarSlot       [ RpLidarA2 { name "laser" } ] # Extends the robot with a RpLidar A2 lidar.
   field  MFNode      extensionSlot   []
   field  MFNode      extensionSlot2  []
-  field  SFColor     teamColor 0.8 0 0  # Default red
+  field  SFColor     teamColor       0.8 0 0  # Default red
 ]
 
 

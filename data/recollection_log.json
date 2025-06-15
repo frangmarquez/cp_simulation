@@ -1,8 +1,11 @@
-{"team": "blue", "timestamp": 14.176}
-{"team": "red", "timestamp": 14.816}
-{"team": "blue", "timestamp": 39.072}
-{"team": "red", "timestamp": 40.160000000000004}
-{"team": "red", "timestamp": 16.544}
-{"team": "blue", "timestamp": 12.512}
-{"team": "blue", "timestamp": 13.024000000000001}
-{"team": "red", "timestamp": 14.24}
+{"robot": "rosbot1", "team": "red", "resources_collected": 1}
+{"robot": "rosbot2", "team": "blue", "resources_collected": 1}
+{"robot": "rosbot2", "team": "blue", "resources_collected": 2}
+{"robot": "rosbot1", "team": "red", "resources_collected": 2}
+{"robot": "rosbot2", "team": "blue", "resources_collected": 3}
+{"robot": "rosbot2", "team": "blue", "resources_collected": 4}
+{"robot": "rosbot1", "team": "red", "resources_collected": 3}
+{"robot": "rosbot2", "team": "blue", "resources_collected": 5}
+{"robot": "rosbot1", "team": "red", "resources_collected": 4}
+{"robot": "rosbot1", "team": "red", "resources_collected": 5}
+{"robot": "rosbot1", "team": "red", "resources_collected": 6}

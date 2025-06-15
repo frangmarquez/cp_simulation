@@ -13,8 +13,8 @@ WorldInfo {
   title "Omniscience"
 }
 Viewpoint {
-  orientation -0.20057219740895652 0.10577803198116488 0.97395164231944 2.2130742995129515
-  position 3.463828524549826 -4.8251107234215045 2.786487306070973
+  orientation -0.21958143454738013 0.12085627959796563 0.9680794147609239 2.181188743167981
+  position 4.200499562856546 -5.852839497129818 3.3335411611643844
 }
 TexturedBackground {
 }
@@ -48,11 +48,12 @@ Solid {
   ]
   name "central_nest"
 }
-Rosbot {
+DEF rosbot1 Rosbot {
   translation 0.5 0 0.02
   name "rosbot1"
   controller "rosbot_controller"
-  customData "red"
+  customData "not_collected"
+  controllerArgs  ["red"]
   extensionSlot [
     GPS {
     }
@@ -62,12 +63,13 @@ Rosbot {
     }
   ]
 }
-Rosbot {
+DEF rosbot2 Rosbot {
   translation -0.5 0 0.02
   rotation 0 0 1 -3.141592653589793
   name "rosbot2"
   controller "rosbot_controller"
-  customData "blue"
+  customData "not_collected"
+  controllerArgs  ["blue"]
   extensionSlot [
     GPS {
     }

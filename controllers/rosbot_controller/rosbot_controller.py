@@ -34,7 +34,6 @@ WALL_TOLERANCE = 0.1
 CENTER_TOLERANCE = 0.1
 BACK_DURATION = 1.0  # seconds to back up before turning
 center_x, center_y = 0.0, 0.0
-RESOURCE_RADIUS = 0.15  # meters
 
 
 # State machine
@@ -47,7 +46,14 @@ has_collected = False   # Flag: one collection per trip
 t0 = True
 collected_count = 0
 
-team_color = robot.getCustomData().strip().lower()
+def update_controller_args():
+    # This writes the current value to the controllerArgs field (accessible by supervisor)
+    robot.setCustomData("collected" if has_collected else "not_collected")
+
+def collect_resource():
+    global has_collected
+    has_collected = True
+    update_controller_args()
         
 def get_heading_angle():
     north = compass.getValues()
@@ -74,7 +80,7 @@ def normalize_angle(angle):
     return angle
     
 def compute_detection_radius(value):
-    return 0.2 + 0.05 * value  # Example scaling rule
+    return 0.1 + 0.05 * value  # Example scaling rule
     
 def will_hit_center(robot_x, robot_y, heading, center_x, center_y):
 
@@ -165,6 +171,7 @@ while robot.step(timestep) != -1:
                 if dist_to_resource <= detection_radius:
                     print(f"Resource {i} detected! Collecting...")
                     set_velocity(0, 0)
+                    collect_resource()
                     start = robot.getTime()
                     while robot.step(timestep) != -1:
                         if robot.getTime() - start > 2.0:
@@ -172,9 +179,8 @@ while robot.step(timestep) != -1:
         
                     # Update resource value
                     resource["value"] = max(0, value - 1)
-                    has_collected = True
-                    with open("./../../data/resource_positions.json", "w") as f:
-                        json.dump(resources, f)
+                    #with open("./../../data/resource_positions.json", "w") as f:
+                    #    json.dump(resources, f)
                     print(f"Collected 1 unit from resource {i}, remaining value: {resource['value']}")
                     state = "turning_to_center"
                     break
@@ -200,42 +206,24 @@ while robot.step(timestep) != -1:
             set_velocity(-MAX_SPEED * 0.5, MAX_SPEED * 0.5)  # keep turning
 
     elif state == "returning":
-        # Compass-based proportional correction
-        
-        #current_heading = get_heading_angle()
-        #desired_heading = angle_to_center(x, y, center_x, center_y)
-        #error = normalize_angle(desired_heading - current_heading)
-    
-        # Steering factor
-        #Kp = 2.0  # Proportional gain
-        #steering = Kp * error
-    
-        #left_speed = MAX_SPEED - steering
-        #right_speed = MAX_SPEED + steering
-    
-        # Clamp speeds to max
-        #left_speed = max(min(left_speed, MAX_SPEED), -MAX_SPEED)
-        #right_speed = max(min(right_speed, MAX_SPEED), -MAX_SPEED)
-    
-        #set_velocity(left_speed, right_speed)
             
         if dist <= CENTER_TOLERANCE + 0.2:
             print("Returned to center.")
             set_velocity(0, 0)
-            
-            log_entry = {
-                "team": team_color,
-                "timestamp": robot.getTime()
-            }
-            try:
-                with open("./../../data/recollection_log.json", "a") as f:
-                    f.write(json.dumps(log_entry) + "\n")
-            except Exception as e:
-                print(f"Failed to log recollection: {e}")
-                
-            has_collected = False
+
             start = robot.getTime()
             while robot.step(timestep) != -1:
-                    if robot.getTime() - start > 2.0:
-                        break
+                
+                has_collected = robot.getCustomData().strip().lower() == "collected"
+                
+                if (robot.getTime() - start > 2.0) and not has_collected:
+                    break
+
+            #if has_collected:
+            #    raise RuntimeError("Robot has already collected resources in this trip " \
+            #    "but its arguments were not updated correctly.")
+                
             state = "choose_direction"
+                
+
+            
