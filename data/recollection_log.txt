@@ -1,0 +1,2 @@
+{"robot": "rosbot2", "team": "blue", "resources_collected": 1}
+{"robot": "rosbot2", "team": "blue", "resources_collected": 2}
