@@ -20,8 +20,6 @@ resource_data = []
 robot_teams = {}
 robot_names = []
 has_collected_states = {}
-for robot in robot_names:
-    has_collected_states[robot] = 'not_collected'
 
 root = supervisor.getRoot()
 children = root.getField("children")
@@ -35,6 +33,9 @@ for i in range(count):
         team_data = node.getField("controllerArgs").getMFString(0)
         team = team_data.strip().lower()
         robot_teams[name] = team
+
+for robot in robot_names:
+    has_collected_states[robot] = 'not_collected'
 
 def generate_resource_spot(supervisor, value, index):
     angle = random.uniform(0, 2 * math.pi)
@@ -119,9 +120,10 @@ def check_and_process_collection(robot_name):
             continue
         rx, ry = resource["x"], resource["y"]
 
-        detection_radius = 0.1 + 0.05 * value
+        detection_radius = 0.2 + (value - 1) * 0.02
         dist = math.sqrt((x - rx)**2 + (y - ry)**2)
-        if dist <= detection_radius:
+        if (dist <= detection_radius) and has_collected_states[robot_name] == 'not_collected':
+            has_collected_states[robot_name] = 'collected'
             resource["value"] = max(0, value - 1)
             robot_node.getField("customData").setSFString("collected")
             print(f"[Supervisor] {robot_name} collected from resource_{i}, remaining value: {resource['value']}")
@@ -153,6 +155,7 @@ def log_collected_resources():
                 if robot_node:
                     customdata_field = robot_node.getField("customData")
                     customdata_field.setSFString("not_collected")
+                    has_collected_states[robot_name] = 'not_collected'
                     print(f"{robot_name}'s status is now 'not_collected'.")
 
                 with open(LOG_FILE, "a") as f:
@@ -169,7 +172,6 @@ teams_resources_counter = Counter()
 # Remove existing log file if it exists
 if os.path.exists(LOG_FILE):
     os.remove(LOG_FILE)
-        
 # Main loop just steps the simulation
 while supervisor.step(timestep) != -1:
 

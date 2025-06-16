@@ -70,9 +70,6 @@ def normalize_angle(angle):
         angle += 2 * math.pi
     return angle
     
-def compute_detection_radius(value):
-    return 0.1 + 0.05 * value  # Example scaling rule
-    
 def will_hit_center(robot_x, robot_y, heading, center_x, center_y):
 
     dx, dy = heading
